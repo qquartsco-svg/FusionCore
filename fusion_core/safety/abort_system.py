@@ -31,41 +31,10 @@ class AbortConfig:
 class AbortSystem:
     """핵융합 코어 비상 중단 시스템."""
 
-    def evaluate(
-        self,
-        health: FusionHealth,
-        state: FusionCoreState,
-        phase: PlasmaPhase,
-        external_abort: bool = False,
-    ) -> AbortMode:
-        """
-        우선순위 기반 AbortMode 결정.
-
-        1. external_abort                           → EMERGENCY_QUENCH
-        2. beta > max_beta_abort                    → MAGNETIC_DUMP
-        3. dose_rate > max_dose_rate                → CONTROLLED_SHUTDOWN
-        4. thermal_margin < 0.05                    → CONTROLLED_SHUTDOWN
-        5. omega_fusion < omega_abort_threshold     → CONTROLLED_SHUTDOWN
-        6. 정상                                     → NONE
-        """
-        cfg = self
-
-        # 1. 외부 중단 명령
-        if external_abort:
-            return AbortMode.EMERGENCY_QUENCH
-
-        # 2. 베타 초과 (자기 불안정 — 가장 급박)
-        if state.plasma.beta > AbortConfig().max_beta_abort:
-            return AbortMode.MAGNETIC_DUMP
-
-        # 임계값 참조 (config 인스턴스에서)
-        # AbortSystem은 config를 주입받아야 하므로 self.config로 참조
-        return AbortMode.NONE  # fallback (실제 로직은 아래 _evaluate_with_config에서)
-
     def __init__(self, config: AbortConfig | None = None) -> None:
         self.config = config or AbortConfig()
 
-    def evaluate(  # type: ignore[override]
+    def evaluate(
         self,
         health: FusionHealth,
         state: FusionCoreState,

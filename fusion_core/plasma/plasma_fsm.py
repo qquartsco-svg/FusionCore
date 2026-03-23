@@ -48,8 +48,8 @@ class PlasmaFSM:
         PREHEATING      → IGNITION_ATTEMPT  : T > ignition_temp & 예열 타이머 완료
         IGNITION_ATTEMPT → BURNING          : lawson_satisfied
         IGNITION_ATTEMPT → QUENCH           : 타이머 초과 & not lawson_satisfied
-        BURNING         → SUSTAINED         : Q > sustained_q_threshold
-        BURNING/SUSTAINED → QUENCH          : beta > disruption_limit
+        BURNING         → HIGH_Q_BURN        : Q > sustained_q_threshold  (고Q 수렴 근사)
+        BURNING/HIGH_Q_BURN → QUENCH        : beta > disruption_limit
         Any             → SHUTDOWN          : abort_trigger
         QUENCH          → COLD              : quench 타이머 완료
     """
@@ -105,17 +105,17 @@ class PlasmaFSM:
                 self._quench_start = t
             return self._phase
 
-        # BURNING → SUSTAINED / QUENCH
+        # BURNING → HIGH_Q_BURN / QUENCH
         if self._phase == PlasmaPhase.BURNING:
             if ctx.beta > cfg.disruption_beta_limit:
                 self._phase = PlasmaPhase.QUENCH
                 self._quench_start = t
             elif ctx.q_factor > cfg.sustained_q_threshold:
-                self._phase = PlasmaPhase.SUSTAINED
+                self._phase = PlasmaPhase.HIGH_Q_BURN
             return self._phase
 
-        # SUSTAINED → QUENCH
-        if self._phase == PlasmaPhase.SUSTAINED:
+        # HIGH_Q_BURN → QUENCH
+        if self._phase == PlasmaPhase.HIGH_Q_BURN:
             if ctx.beta > cfg.disruption_beta_limit:
                 self._phase = PlasmaPhase.QUENCH
                 self._quench_start = t

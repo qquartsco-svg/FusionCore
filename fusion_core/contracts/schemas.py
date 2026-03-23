@@ -46,13 +46,17 @@ class ReactionType(Enum):
 
 
 class PlasmaPhase(Enum):
-    """플라즈마 생애주기 상태."""
+    """플라즈마 생애주기 상태.
+
+    HIGH_Q_BURN: Q > sustained_q_threshold 조건에서 자가 유지 고Q 연소 추정 상태.
+    실제 ignition(Q→∞) 달성이 아닌 고Q 수렴 근사 상태임에 유의.
+    """
 
     COLD              = "COLD"
     PREHEATING        = "PREHEATING"
     IGNITION_ATTEMPT  = "IGNITION_ATTEMPT"
     BURNING           = "BURNING"
-    SUSTAINED         = "SUSTAINED"
+    HIGH_Q_BURN       = "HIGH_Q_BURN"   # 고Q 수렴 연소 (이상적 자가유지 근사)
     QUENCH            = "QUENCH"
     SHUTDOWN          = "SHUTDOWN"
 

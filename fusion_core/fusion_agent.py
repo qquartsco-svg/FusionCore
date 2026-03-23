@@ -310,7 +310,7 @@ class FusionAgent:
         # 가열 전력: 위상에 따라 스케일
         if phase in (PlasmaPhase.PREHEATING, PlasmaPhase.IGNITION_ATTEMPT):
             heating_mw = 50.0 * self._throttle   # 외부 가열 전력 [MW]
-        elif phase in (PlasmaPhase.BURNING, PlasmaPhase.SUSTAINED):
+        elif phase in (PlasmaPhase.BURNING, PlasmaPhase.HIGH_Q_BURN):
             heating_mw = 10.0 * self._throttle   # 유지 가열
         else:
             heating_mw = 0.0
@@ -425,17 +425,40 @@ class FusionAgent:
         )
 
         # abort_mode에 따른 phase 보정
+        final_phase = phase
         if abort_mode != AbortMode.NONE and phase not in (PlasmaPhase.SHUTDOWN, PlasmaPhase.QUENCH):
             if abort_mode == AbortMode.EMERGENCY_QUENCH:
-                phase = PlasmaPhase.SHUTDOWN
+                final_phase = PlasmaPhase.SHUTDOWN
             elif abort_mode in (AbortMode.CONTROLLED_SHUTDOWN, AbortMode.MAGNETIC_DUMP):
-                phase = PlasmaPhase.QUENCH
+                final_phase = PlasmaPhase.QUENCH
+
+        if final_phase != new_plasma.phase:
+            new_plasma = PlasmaState(
+                temperature_kev=new_plasma.temperature_kev,
+                density_m3=new_plasma.density_m3,
+                confinement_time_s=new_plasma.confinement_time_s,
+                beta=new_plasma.beta,
+                q_factor=new_plasma.q_factor,
+                triple_product=new_plasma.triple_product,
+                heating_power_mw=new_plasma.heating_power_mw,
+                phase=final_phase,
+            )
+            core_state = FusionCoreState(
+                t_s=t,
+                plasma=new_plasma,
+                reaction=reaction,
+                thermal=new_thermal,
+                shielding=new_shielding,
+                power_bus=new_power_bus,
+                propulsion=new_propulsion,
+                fuel=new_fuel,
+            )
 
         frame = TelemetryFrame(
             t_s=t,
             state=core_state,
             health=health,
-            phase=phase,
+            phase=final_phase,
             abort_mode=abort_mode,
         )
 
@@ -444,15 +467,15 @@ class FusionAgent:
 
         # 이벤트 기록 (상태 전이 감지)
         prev_phase = self._plasma.phase
-        if phase != prev_phase:
+        if final_phase != prev_phase:
             event_type = {
                 PlasmaPhase.BURNING:  "IGNITION",
                 PlasmaPhase.QUENCH:   "QUENCH",
                 PlasmaPhase.SHUTDOWN: "ABORT",
-            }.get(phase, "STAGE_EVENT")
+            }.get(final_phase, "STAGE_EVENT")
             self._chain.record_event(t, event_type, {
                 "from_phase": prev_phase.value,
-                "to_phase": phase.value,
+                "to_phase": final_phase.value,
             })
 
         # 상태 갱신

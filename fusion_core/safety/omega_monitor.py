@@ -67,7 +67,7 @@ class OmegaMonitor:
             PlasmaPhase.PREHEATING:       0.3,
             PlasmaPhase.IGNITION_ATTEMPT: 0.5,
             PlasmaPhase.BURNING:          0.8,
-            PlasmaPhase.SUSTAINED:        1.0,
+            PlasmaPhase.HIGH_Q_BURN:        1.0,
             PlasmaPhase.QUENCH:           0.0,
             PlasmaPhase.SHUTDOWN:         0.0,
         }.get(plasma.phase, 0.0)
@@ -77,7 +77,7 @@ class OmegaMonitor:
 
         if plasma.beta > 0.08:
             alerts.append(f"HIGH_BETA: beta={plasma.beta:.4f}")
-        if plasma.q_factor < 1.0 and plasma.phase in (PlasmaPhase.BURNING, PlasmaPhase.SUSTAINED):
+        if plasma.q_factor < 1.0 and plasma.phase in (PlasmaPhase.BURNING, PlasmaPhase.HIGH_Q_BURN):
             alerts.append(f"LOW_Q_FACTOR: Q={plasma.q_factor:.2f}")
 
         # --- Ω_thermal ---

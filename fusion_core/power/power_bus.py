@@ -57,8 +57,9 @@ class PowerBusController:
         thermal_mgmt_mw = after_parasitic * cfg.thermal_mgmt_fraction
         after_thermal = after_parasitic - thermal_mgmt_mw
 
-        # 3. 최소 전기 보장 (생명유지·항법)
-        electric_base = min(cfg.min_electric_mw, after_thermal)
+        # 3. 기본 전기 부하 보장 (생명유지·항법·제어)
+        target_electric_base = max(cfg.min_electric_mw, cfg.base_electric_mw)
+        electric_base = min(target_electric_base, after_thermal)
         after_base = after_thermal - electric_base
 
         if demand_mode == PropulsionMode.OFF:

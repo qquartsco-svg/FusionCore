@@ -422,6 +422,13 @@ class TestThermalSystem:
         ratio = P2 / P1
         assert abs(ratio - 16.0) < 0.5  # T⁴ 비례
 
+    def test_radiated_power_uses_injected_sigma(self, thermal_sys):
+        default_phys = FusionPhysicsConfig()
+        custom_phys = FusionPhysicsConfig(sigma_sb=2.0 * default_phys.sigma_sb)
+        p_default = thermal_sys.radiated_power_mw(900.0, default_phys)
+        p_custom = thermal_sys.radiated_power_mw(900.0, custom_phys)
+        assert p_custom == pytest.approx(2.0 * p_default)
+
     def test_radiator_mass_positive(self, thermal_sys):
         mass = thermal_sys.radiator_mass_kg()
         assert mass > 0.0
@@ -648,12 +655,12 @@ class TestPlasmaFSM:
         phase = fsm.update(self._ctx(t=16.0, T=3.0, lawson=False))  # 10s 초과
         assert phase == PlasmaPhase.QUENCH
 
-    def test_burning_high_q_transitions_sustained(self, fsm):
+    def test_burning_high_q_transitions_high_q_burn(self, fsm):
         fsm.update(self._ctx(t=0.0, go=True))
         fsm.update(self._ctx(t=5.0, T=5.0))
         fsm.update(self._ctx(t=6.0, T=5.0, lawson=True))   # → BURNING
         phase = fsm.update(self._ctx(t=7.0, T=10.0, q=2.0, lawson=True))
-        assert phase == PlasmaPhase.SUSTAINED
+        assert phase == PlasmaPhase.HIGH_Q_BURN
 
     def test_burning_beta_disruption_transitions_quench(self, fsm):
         fsm.update(self._ctx(t=0.0, go=True))
@@ -738,6 +745,15 @@ class TestPowerBusController:
         state = controller.allocate(r, PropulsionMode.ELECTRIC_ONLY, cfg)
         assert state.total_available_mw == 0.0
 
+    def test_base_electric_load_knob_changes_allocation(self, controller):
+        r = make_reaction(power=500.0)
+        cfg_low = PowerBusConfig(base_electric_mw=10.0, min_electric_mw=10.0)
+        cfg_high = PowerBusConfig(base_electric_mw=60.0, min_electric_mw=10.0)
+        s_low = controller.allocate(r, PropulsionMode.ELECTRIC_ONLY, cfg_low)
+        s_high = controller.allocate(r, PropulsionMode.ELECTRIC_ONLY, cfg_high)
+        assert s_high.electric_mw > s_low.electric_mw
+        assert s_high.thrust_mw < s_low.thrust_mw
+
 
 # ============================================================
 # §11 FusionPropulsionEngine (8)
@@ -818,7 +834,7 @@ class TestOmegaMonitor:
     def test_healthy_verdict_high_omega(self, monitor, omega_cfg):
         # 건강한 상태 → HEALTHY
         state = make_core_state(
-            plasma=make_plasma(T_kev=20.0, q=5.0, beta=0.01, phase=PlasmaPhase.SUSTAINED),
+            plasma=make_plasma(T_kev=20.0, q=5.0, beta=0.01, phase=PlasmaPhase.HIGH_Q_BURN),
             thermal=make_thermal(margin=0.95),
             shielding=make_shielding(margin=0.95),
             fuel=make_fuel(d=490.0, t=490.0),
@@ -855,7 +871,7 @@ class TestOmegaMonitor:
 
     def test_no_abort_healthy_state(self, monitor, omega_cfg):
         state = make_core_state(
-            plasma=make_plasma(beta=0.01, q=3.0, T_kev=15.0, phase=PlasmaPhase.SUSTAINED),
+            plasma=make_plasma(beta=0.01, q=3.0, T_kev=15.0, phase=PlasmaPhase.HIGH_Q_BURN),
             thermal=make_thermal(margin=0.9),
             shielding=make_shielding(margin=0.9, dose=0.001),
             fuel=make_fuel(d=450.0, t=450.0),
@@ -916,7 +932,7 @@ class TestAbortSystem:
             shielding=make_shielding(dose=0.001),
         )
         h = make_health(omega=0.9)
-        mode = abort_sys.evaluate(h, state, PlasmaPhase.SUSTAINED)
+        mode = abort_sys.evaluate(h, state, PlasmaPhase.HIGH_Q_BURN)
         assert mode == AbortMode.NONE
 
     def test_emergency_quench_on_external_abort(self, abort_sys):
@@ -1093,6 +1109,15 @@ class TestFusionAgent:
         frames = agent.simulate(10.0)
         for f in frames:
             assert isinstance(f.abort_mode, AbortMode)
+
+    def test_abort_keeps_frame_and_plasma_phase_in_sync(self):
+        agent = FusionAgent(FusionAgentConfig())
+        agent._go_command = True
+        agent._plasma = make_plasma(T_kev=15.0, q=3.0, beta=0.12, phase=PlasmaPhase.HIGH_Q_BURN)
+        frame = agent.tick()
+        assert frame.abort_mode != AbortMode.NONE
+        assert frame.phase == frame.state.plasma.phase
+        assert agent._plasma.phase == frame.phase
 
     def test_chain_integrity_after_simulation(self, agent):
         agent.simulate(50.0)

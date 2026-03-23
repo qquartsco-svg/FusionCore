@@ -34,7 +34,7 @@ def bridge_fusion_to_rocket(fusion_state: FusionCoreState) -> dict:
 
     is_ignited = fusion_state.plasma.phase in (
         PlasmaPhase.BURNING,
-        PlasmaPhase.SUSTAINED,
+        PlasmaPhase.HIGH_Q_BURN,
     )
     return {
         "thrust_n":      fusion_state.propulsion.thrust_n,

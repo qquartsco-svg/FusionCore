@@ -1,6 +1,6 @@
 # FusionCore v0.1.0 — 핵융합 우주 추진 코어
 
-> **정체성**: D-T 핵융합 반응에서 전력(MW)과 추력(N)을 뽑아내는 **범용 플라즈마 런타임**.
+> **정체성**: D-T 핵융합 반응에서 전력(MW)과 **등가 추진 출력**을 생성하는 **핵융합 전력 코어 런타임**.
 > 기본 검증 경로: **D-T 반응** (토카막 기반 전력 생산 → 전기추진 구동).
 > 직접 추진(DFD) 모드도 지원하나, 현 버전의 핵심은 **발전 → 전기추진 변환** 경로.
 > 출력 인터페이스: `power_total_mw`, `thrust_n`, `isp_s`, `omega_fusion`, `chain` — 어떤 우주선에든 pluggable.
@@ -81,6 +81,13 @@ Q 인자:  Q = P_fusion / P_heating
 
 베타:    β = (n × k_B × T) / (B²/2μ₀)
          β < β_max  : 안정
+
+토카막 핵심 설정값 (ConfinementConfig 기본값):
+  B_field          = 5.0  T       # 자기장 강도
+  energy_τ_E       = 3.0  s       # 에너지 가둠 시간
+  max_beta         = 0.05         # 안전 베타 한계 (토카막 기준)
+  plasma_density   = 1×10²⁰ m⁻³  # 입자 수밀도
+  (plasma_volume은 density와 triple_product에서 암묵적으로 사용)
 ```
 
 ### 4. 방열판 복사 (Stefan-Boltzmann)
@@ -280,9 +287,14 @@ print(f"체인: {agent._chain.verify_integrity()}")
   - 우주 방사선 차폐 설계 연구
 
 StarCraft OS 통합:
-  FusionCore.power_mw  → TerraCore 전기분해 전력
-  FusionCore.thrust_n  → Rocket_Spirit Δv 계산
+  [기술 연결 — 현재 구현됨]
+  FusionCore.power_mw  → TerraCore 전기분해 전력 (브릿지 set_input_power)
+  FusionCore.thrust_n  → Rocket_Spirit Δv 계산 (브릿지 apply_thrust)
   FusionCore.chain     → StarCraft 통합 감사 로그
+
+  [장기 철학 연결 — 아직 추상 수준]
+  TerraCore.h2_mol     → FusionCore 연료 피드백
+  (생명유지 수소가 핵융합 연료로 순환: 폐순환 개념 구현 예정)
 ```
 
 ---
@@ -292,7 +304,7 @@ StarCraft OS 통합:
 ```bash
 cd FusionCore_Stack
 python -m pytest tests/test_fusion_core.py -v
-# 127 passed  §1~§15
+# 130 passed  §1~§15
 ```
 
 §1 FuelState / §2 PlasmaState / §3 ReactionState / §4 ThermalState /

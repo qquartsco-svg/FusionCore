@@ -31,11 +31,20 @@ class ThermalSystem:
     def __init__(self, config: ThermalConfig) -> None:
         self.config = config
 
-    def radiated_power_mw(self, T_rad_k: float) -> float:
-        """방열판 복사 출력 [MW] = ε · σ · A · T⁴."""
+    def radiated_power_mw(
+        self,
+        T_rad_k: float,
+        physics: FusionPhysicsConfig | None = None,
+    ) -> float:
+        """방열판 복사 출력 [MW] = ε · σ · A · T⁴.
+
+        `physics`가 주어지면 그 안의 스테판-볼츠만 상수를 사용한다.
+        미지정 시 기본 FusionPhysicsConfig를 사용해 하위 호환을 유지한다.
+        """
         cfg = self.config
+        phys = physics or FusionPhysicsConfig()
         # 단위: W → MW
-        power_w = cfg.emissivity * 5.670374419e-8 * cfg.radiator_area_m2 * (T_rad_k ** 4)
+        power_w = cfg.emissivity * phys.sigma_sb * cfg.radiator_area_m2 * (T_rad_k ** 4)
         return power_w * 1.0e-6
 
     def tick(
@@ -54,7 +63,7 @@ class ThermalSystem:
         cfg = self.config
 
         # 현재 방열판 복사 출력 [MW]
-        P_rad_mw = self.radiated_power_mw(state.radiator_temp_k)
+        P_rad_mw = self.radiated_power_mw(state.radiator_temp_k, physics)
 
         # 열 부하 - 방열: [MW]
         net_mw = heat_load_mw - P_rad_mw

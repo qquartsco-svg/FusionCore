@@ -1,6 +1,6 @@
 # FusionCore_Stack — 아키텍처 및 작동 원리
 
-> v0.1.0 · 127/127 PASS · stdlib only
+> v0.1.0 · 133/133 PASS · stdlib only
 
 ---
 
@@ -40,8 +40,8 @@ new_plasma = PlasmaState(
 
 ### "하드코딩은 없다"
 
-중력 상수 `g₀`, 스테판-볼츠만 상수 `σ`, 볼츠만 상수 `k_B` —
-모두 `FusionPhysicsConfig` 객체에 있다.
+중력 상수 `g₀`, 스테판-볼츠만 상수 `σ`, 볼츠만 상수 `k_B` 같은
+공통 물리 상수는 `FusionPhysicsConfig` 객체로 주입된다.
 
 ```python
 config = FusionPhysicsConfig(
@@ -102,7 +102,7 @@ FusionCore_Stack/
 │   │   └── brain_core.py       브릿지 — CookiieBrain 연동
 │   └── fusion_agent.py         오케스트레이터 — 10단계 파이프라인
 └── tests/
-    └── test_fusion_core.py     127 케이스
+    └── test_fusion_core.py     133 케이스
 ```
 
 ---
@@ -781,7 +781,7 @@ FusionCore_Stack ─── 핵융합 추진 (여기서부터)
 
 ---
 
-## 11. 테스트 커버리지 (127/127 PASS)
+## 11. 테스트 커버리지 (133/133 PASS)
 
 | 섹션 | 내용 | 케이스 |
 |------|------|--------|
